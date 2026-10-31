@@ -11,7 +11,7 @@ except:
 
 import matplotlib.pyplot as plt
 import numpy as np
-import spiderman
+import fspiderman
 from scipy.interpolate import interp1d
 
 def gen_grid(l1,l2,logg=4.5, response = False, stellar_model = "blackbody", verbose=False):
@@ -28,14 +28,14 @@ def gen_grid(l1,l2,logg=4.5, response = False, stellar_model = "blackbody", verb
 
     filter = response
     if response != False:
-        filter = spiderman.get_filter(response)
+        filter = fspiderman.get_filter(response)
 
     totals = []
     for teff in teffs:
         if stellar_model == "PHOENIX":
-            if spiderman.rcParams.read == False: print('Add path to PHOENIX models to .spidermanrc file')
+            if fspiderman.rcParams.read == False: print('Add path to PHOENIX models to .fspidermanrc file')
             wvl, flux = get_phoenix_spectra(teff,logg,z)
-            PHOENIX_DIR = spiderman.rcParams['PHOENIX_DIR']
+            PHOENIX_DIR = fspiderman.rcParams['PHOENIX_DIR']
 
             if warned == False:
                 print('using stellar spectra in '+PHOENIX_DIR)
@@ -104,7 +104,7 @@ def sum_flux(wvl,flux,l1,l2,filter=False):
 def get_phoenix_spectra(teff,logg,z):
     ftemplate = 'lte{teff:05d}-{logg:4.2f}{z:+3.1f}.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits'
 
-    PHOENIX_DIR = spiderman.rcParams['PHOENIX_DIR']
+    PHOENIX_DIR = fspiderman.rcParams['PHOENIX_DIR']
 
     filename = os.path.join(PHOENIX_DIR,ftemplate.format(teff=teff,logg=logg,z=z))
 

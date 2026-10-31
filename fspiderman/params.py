@@ -1,7 +1,7 @@
 import numpy as np
-import spiderman as sp
-import spiderman._web as _web
-import spiderman.plot as splt
+import fspiderman as sp
+import fspiderman._web as _web
+import fspiderman.plot as splt
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 import math

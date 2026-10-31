@@ -1,4 +1,4 @@
-import spiderman.web as web
+import fspiderman.web as web
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sb

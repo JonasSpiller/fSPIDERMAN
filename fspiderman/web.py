@@ -1,5 +1,5 @@
-import spiderman._web as _web
-import spiderman as sp
+import fspiderman._web as _web
+import fspiderman as sp
 import numpy as np
 import copy 
 

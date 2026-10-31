@@ -1,4 +1,4 @@
-import spiderman as sp
+import fspiderman as sp
 import numpy as np
 
 def load_grid(fname,layer):
@@ -38,7 +38,7 @@ def open_PT_profile(fname,layer):
 	return(longitude, latitude, T)
 
 def format_grid(longitude,latitude,temp):
-	# puts the grid into a format that spiderman can use
+	# puts the grid into a format that fspiderman can use
 	# including wrapping/reflecting the boundaries to allow smooth and continuous interpolation
 
 	longitude = longitude.flatten()

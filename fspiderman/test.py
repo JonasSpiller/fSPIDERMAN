@@ -1,4 +1,4 @@
-import spiderman as sp
+import fspiderman as sp
 import numpy as np
 import matplotlib.pyplot as plt
 import time as timing
