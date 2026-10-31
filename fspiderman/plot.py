@@ -1,6 +1,6 @@
 import matplotlib as mpl
 #mpl.use('Agg')
-import spiderman as sp
+import fspiderman as sp
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib._png import read_png
