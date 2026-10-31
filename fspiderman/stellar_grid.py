@@ -76,30 +76,24 @@ def gen_grid(l1,l2,logg=4.5, response = False, stellar_model = "blackbody", verb
 
     return [teffs, totals]
 
-def sum_flux(wvl,flux,l1,l2,filter=False):
+def sum_flux(wvl, flux, l1, l2, filter=False):
+    """In-band stellar flux: trapezoid of (response x flux) over exactly [l1, l2].
 
-
-    mask = (wvl > l1) & (wvl < l2)
-
-    diff = np.diff(wvl)
-    diff = (np.append(diff,diff[-1:]) + np.append(diff[1:],diff[-2:]))/2
-
-    diff = diff[mask]
-
-    wvl = wvl[mask]
-    flux = flux[mask]
-
-    if filter != False:
-        f = interp1d(filter[0],filter[1],kind='linear',bounds_error=True,axis=0)
-        r = f(wvl)
+    The band edges are added as interpolated samples, so no spectrum sample is dropped and the integral covers the
+    same closed interval as bb_flux() in c_src/blackbody.c, which integrates the planet's blackbody over [l1, l2].
+    Upstream used the strict mask (wvl > l1) & (wvl < l2) with rectangle weights, which dropped both band-edge
+    samples and left the stellar flux short by ~dlambda * [B(l1) + B(l2)] / 2 (0.22% for a 5-12 um top-hat at
+    1000 samples), scaling every Fp/Fs up by the same factor."""
+    wvl, flux = np.asarray(wvl, float), np.asarray(flux, float)
+    inside = (wvl > l1) & (wvl < l2)
+    w = np.concatenate(([l1], wvl[inside], [l2]))
+    f = np.concatenate(([np.interp(l1, wvl, flux)], flux[inside], [np.interp(l2, wvl, flux)]))
+    if filter is not False:
+        r = interp1d(filter[0], filter[1], kind='linear', bounds_error=True, axis=0)(w)
     else:
-        r = np.array([1.0]*len(wvl))
-
-    total = 0.0
-
-    for i in range(0,len(wvl)):
-        total += r[i]*flux[i]*diff[i]
-    return total
+        r = np.ones_like(w)
+    trapezoid = getattr(np, "trapezoid", None) or np.trapz
+    return float(trapezoid(r * f, w))
 
 def get_phoenix_spectra(teff,logg,z):
     ftemplate = 'lte{teff:05d}-{logg:4.2f}{z:+3.1f}.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits'

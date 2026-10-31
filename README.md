@@ -16,7 +16,7 @@ whose thermal forward model drives SPIDERMAN's `direct_T` brightness model with 
 `lightcurve()` routine is the runtime bottleneck of that work. The fork therefore carries
 
 - **compatibility fixes** so it builds and runs on current Python / numpy / matplotlib / setuptools,
-- **bug fixes** in the C extension,
+- **bug fixes** in the C extension and in the stellar-flux integration,
 - **performance patches** to `lightcurve()`, with output unchanged,
 
 each applied as its own commit and documented below. The physics is untouched: a patched build
@@ -120,3 +120,29 @@ quadrature) becomes 2–15× **more** accurate; maps with a 0 K nightside now ru
 zero nightside flux edge-on; a representative albedo fit shifts by 5 × 10⁻⁵; no measurable
 slowdown. **This is the one patch that deliberately changes results** (removing an interpolation
 artefact), so curves from a clamped build are not bit-identical to upstream at sharp terminators.
+
+### 5. Stellar band-flux fix (`fix stellar band flux`)
+
+SPIDERMAN's Fp/Fs is the ratio of two band integrals computed in two different places. The planet
+side is integrated in C (`bb_flux` in `c_src/blackbody.c`, Simpson's rule over the closed interval
+[l1, l2]). The stellar side comes from Python: `stellar_grid.gen_grid` samples the stellar spectrum
+(a blackbody on `np.linspace(l1, l2, 1000)`, or a PHOENIX / user spectrum) and `sum_flux` integrates it
+with the strict mask `(wvl > l1) & (wvl < l2)` and rectangle weights. That drops **both band-edge
+samples**, so the stellar flux is short by ≈ Δλ·[B(l1) + B(l2)]/2 and every thermal Fp/Fs comes out
+too high by a band-dependent factor: **0.216 %** for a 5–12 µm top-hat, 0.09 % for MIRI/LRS or
+NIRSpec G395H NRS1, 0.02 % for NRS2, 0.05–0.07 % for the MIRI imaging filters (the factor is the same
+at every planet temperature, so it rescales the whole thermal curve).
+
+The fix makes `sum_flux` a trapezoid of (response × flux) over exactly [l1, l2], adding the two band
+edges as interpolated samples. For the blackbody star this agrees with an adaptive quadrature of the
+Planck function to < 10⁻⁶; the stellar T_eff spline in `web.c` (500 K nodes) and the planet-side
+`bb_grid` spline (100 K nodes) were checked at the same time and contribute < 10⁻⁵. **Like the clamp,
+this patch deliberately changes results:** all thermal Fp/Fs values drop by the factors above.
+
+Found while comparing against Alex McGinty's independent bare-rock phase-curve model: with an exact 1D
+reference integral for the occultation depth, the remaining SPIDERMAN error after this fix is the **midpoint disc
+quadrature** of `generate_planet` (uniform radial layers, brightness evaluated at the segment centre),
+which converges only as ~`n_layers`^-1.5 because the brightness has infinite radial slope at the limb:
++0.16 / +0.06 / +0.02 / +0.007 ppm on a 240 ppm depth for 40 / 80 / 160 / 320 layers, independent of
+the temperature-map resolution. This is left as is; use `n_layers ≥ 80` where absolute depths matter.
+
