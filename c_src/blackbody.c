@@ -26,7 +26,16 @@ double bb_interp(double tval, double **bb_g){
 		exit(0);
 	}	
 
-	double yval = spline_cubic_val( n_segments, bb_g[0], bb_g[1], bb_g[2], tval, &ypval, &yppval);
+	/* SPEED PATCH: bb_g[0] is a uniform grid (T_start..T_end in n_temps steps,
+	   see bb_grid()), so the spline interval is a direct index computation -
+	   no search of any kind. */
+	int ival;
+	double step = bb_g[0][1] - bb_g[0][0];
+	ival = (int)((tval - bb_g[0][0]) / step);
+	if(ival < 0) ival = 0;
+	if(ival > n_segments - 2) ival = n_segments - 2;
+
+	double yval = spline_cubic_val_ival( ival, bb_g[0], bb_g[1], bb_g[2], tval, &ypval, &yppval);
 
 	return yval;
 

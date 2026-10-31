@@ -6,6 +6,7 @@
 #include "math.h"
 #include "util.h"
 #include "bicubic.h"
+#include "orthographic.h"
 #include "nrutil.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,7 +15,9 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-void map_model(double **planet,int n_layers,double lambda0, double phi0, double u1, double u2,int brightness_model,double *brightness_params,double **bb_g,double star_bright, double *lo_2d, double *la_2d, double **T_2d, double **y1_grid, double **y2_grid, double **y12_grid){
+void map_model(double **planet,int n_layers,double lambda0, double phi0, double u1, double u2,int brightness_model,double *brightness_params,double **bb_g,double star_bright, double *lo_2d, double *la_2d, double **T_2d, double **y1_grid, double **y2_grid, double **y12_grid, const float *bcu_tab){
+    double seg_coords[2];   /* SPEED PATCH: reused, was malloc'd per segment */
+    double seg_vals[2];     /* SPEED PATCH: reused, was malloc'd per segment */
     double point_T,mu,p_t_bright;
     double l1,l2,R_mid,theta_mid,mid_x,mid_y;
     double la, lo;
@@ -55,21 +58,16 @@ void map_model(double **planet,int n_layers,double lambda0, double phi0, double 
             mid_y = R_mid*sin(theta_mid);
         }
 
-        double *coords = cart_to_ortho(R, mid_x, mid_y, lambda0, phi0);
-        la = coords[1];
+        cart_to_ortho_r(R, mid_x, mid_y, lambda0, phi0, seg_coords);
+        la = seg_coords[1];
         // sign change to longitude - we're looking at the planet from the 
         // other side than in the simulations
-        lo = -1*coords[0];
+        lo = -1*seg_coords[0];
 
-        free(coords);
+        call_map_model_r(la,lo,lambda0,phi0,brightness_model,brightness_params,bb_g,make_grid,planet[k][10],planet[k][11],planet[k][13],planet[k][14],star_bright,la_cen,lo_cen,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid,bcu_tab,seg_vals);
 
-        double *vals = call_map_model(la,lo,lambda0,phi0,brightness_model,brightness_params,bb_g,make_grid,planet[k][10],planet[k][11],planet[k][13],planet[k][14],star_bright,la_cen,lo_cen,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid);
-
-        planet[k][16] = vals[0]; 
-        planet[k][17] = vals[1];
-//         printf("%f %f inside",planet[k][16],planet[k][17]);
-
-        free(vals);
+        planet[k][16] = seg_vals[0]; 
+        planet[k][17] = seg_vals[1];
 
         // limb darkening
 
@@ -82,11 +80,18 @@ void map_model(double **planet,int n_layers,double lambda0, double phi0, double 
 
 }
 
+/* SPEED PATCH: original signature kept as a wrapper (it is exported through
+   _web.call_map_model); all internal callers use the reentrant core below,
+   which writes into `out` and does not touch the heap. */
 double *call_map_model(double la,double lo,double lambda0, double phi0,int brightness_model,double *brightness_params,double **bb_g,int make_grid,double theta1, double theta2, double r1, double r2, double star_bright,double la_cen,double lo_cen, double *lo_2d, double *la_2d, double **T_2d, double **y1_grid, double **y2_grid, double **y12_grid){
+    double *output = malloc(sizeof(double) * 2);
+    call_map_model_r(la,lo,lambda0,phi0,brightness_model,brightness_params,bb_g,make_grid,theta1,theta2,r1,r2,star_bright,la_cen,lo_cen,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid,NULL,output);
+    return output;
+}
+
+void call_map_model_r(double la,double lo,double lambda0, double phi0,int brightness_model,double *brightness_params,double **bb_g,int make_grid,double theta1, double theta2, double r1, double r2, double star_bright,double la_cen,double lo_cen, double *lo_2d, double *la_2d, double **T_2d, double **y1_grid, double **y2_grid, double **y12_grid, const float *bcu_tab, double *out){
     double point_T,mu,p_t_bright,point_b;
     double l1,l2;
-    double *output;
-
     double R = 1.0;
     int n_bb_seg = 10;
 
@@ -206,19 +211,12 @@ double *call_map_model(double la,double lo,double lambda0, double phi0,int brigh
 
     else if(brightness_model == 12 || brightness_model == 13){
 
-/*        printf("\n");
-        printf("%f\n",lo*180.0/M_PI);
-        printf("%i\n",find_minimum(lo_2d, lo*180.0/M_PI, (int) brightness_params[3]));
-        printf("%f\n",lo_2d[find_minimum(lo_2d, lo*180.0/M_PI, (int) brightness_params[3])]);
-        printf("\n");*/
-
-        int *out1;
-        out1 = malloc(sizeof(int) * 2);
-
-        int *out2;
-        out2 = malloc(sizeof(int) * 2);
-
+        /* SPEED PATCH: stack buffers instead of 9 malloc/free pairs per segment
+           per time-step, and a precomputed per-cell bicubic coefficient table
+           instead of re-running bcucof() (a 16x16 mat-vec) at every sample. */
+        int out1[2], out2[2];
         int nlo, nla, nearest;
+        float ansy;
 
         if(brightness_model == 12){
             nlo = brightness_params[3];
@@ -231,89 +229,56 @@ double *call_map_model(double la,double lo,double lambda0, double phi0,int brigh
             nearest = brightness_params[2];
         }
 
-        find_top_two(lo_2d, lo*180.0/M_PI, (int) nlo, out1);
-
-//        printf("before second %i\n",(int) brightness_params[4]);
-        find_top_two(la_2d, la*180.0/M_PI, (int) nla, out2);
-
-//        printf("positions %i %i %i %i %i %i\n",out1[0],out1[1],out2[0],out2[1],nlo,nla);
-//        printf("positions %f %f %f %f\n",lo_2d[out1[0]],lo_2d[out1[1]],la_2d[out2[0]],la_2d[out2[1]]);
-
-        float *ansy, *ansy1, *ansy2;
-
-        ansy = malloc(sizeof(float) * 1);
-        ansy1 = malloc(sizeof(float) * 1);
-        ansy2 = malloc(sizeof(float) * 1);
-
-        float *y,*y1,*y2,*y12;
-        y = malloc(sizeof(float) * 5);
-        y1 = malloc(sizeof(float) * 5);
-        y2 = malloc(sizeof(float) * 5);
-        y12 = malloc(sizeof(float) * 5);
-
-        y[1] = T_2d[out1[0]][out2[0]];
-        y[2] = T_2d[out1[1]][out2[0]];
-        y[3] = T_2d[out1[1]][out2[1]];
-        y[4] = T_2d[out1[0]][out2[1]];
-
-        y1[1] = y1_grid[out1[0]][out2[0]];
-        y1[2] = y1_grid[out1[1]][out2[0]];
-        y1[3] = y1_grid[out1[1]][out2[1]];
-        y1[4] = y1_grid[out1[0]][out2[1]];
-
-        y2[1] = y2_grid[out1[0]][out2[0]];
-        y2[2] = y2_grid[out1[1]][out2[0]];
-        y2[3] = y2_grid[out1[1]][out2[1]];
-        y2[4] = y2_grid[out1[0]][out2[1]];
-
-        y12[1] = y12_grid[out1[0]][out2[0]];
-        y12[2] = y12_grid[out1[1]][out2[0]];
-        y12[3] = y12_grid[out1[1]][out2[1]];
-        y12[4] = y12_grid[out1[0]][out2[1]];
-
-
-//        printf("%f %f %f %f %f %f\n",lo_2d[out1[0]],lo_2d[out1[1]], la_2d[out2[0]], la_2d[out2[1]], lo*180.0/M_PI, la*180.0/M_PI);
-        bcuint(y, y1, y2, y12, lo_2d[out1[0]],lo_2d[out1[1]], la_2d[out2[0]], la_2d[out2[1]], lo*180.0/M_PI, la*180.0/M_PI, ansy, ansy1, ansy2);
-
+        /* SPEED PATCH: with nearest==1 the interpolated value is discarded below,
+           so skip the bracket search and the bicubic evaluation entirely. */
         if (nearest == 1) {
             int c_lo = find_minimum(lo_2d, lo*180.0/M_PI, (int) nlo);
             int c_la = find_minimum(la_2d, la*180.0/M_PI, (int) nla);
-            *ansy = T_2d[c_lo][c_la];
+            ansy = T_2d[c_lo][c_la];
+            if(brightness_model == 12){ out[0] = bb_interp((double) ansy, bb_g); out[1] = ansy; }
+            else                      { out[0] = ansy; out[1] = 0.0; }
+            return;
+        }
+
+        find_top_two(lo_2d, lo*180.0/M_PI, (int) nlo, out1);
+        find_top_two(la_2d, la*180.0/M_PI, (int) nla, out2);
+
+        if(bcu_tab != NULL){
+            const float *c16 = bcu_tab + ((size_t) out1[0] * (nla - 1) + out2[0]) * 16;
+            ansy = bcuint_fast(c16, lo_2d[out1[0]], lo_2d[out1[1]],
+                               la_2d[out2[0]], la_2d[out2[1]],
+                               lo*180.0/M_PI, la*180.0/M_PI);
+        }
+        else{
+            float y[5], y1[5], y2[5], y12[5], ansy1, ansy2;
+            y[1] = T_2d[out1[0]][out2[0]];      y[2] = T_2d[out1[1]][out2[0]];
+            y[3] = T_2d[out1[1]][out2[1]];      y[4] = T_2d[out1[0]][out2[1]];
+            y1[1] = y1_grid[out1[0]][out2[0]];  y1[2] = y1_grid[out1[1]][out2[0]];
+            y1[3] = y1_grid[out1[1]][out2[1]];  y1[4] = y1_grid[out1[0]][out2[1]];
+            y2[1] = y2_grid[out1[0]][out2[0]];  y2[2] = y2_grid[out1[1]][out2[0]];
+            y2[3] = y2_grid[out1[1]][out2[1]];  y2[4] = y2_grid[out1[0]][out2[1]];
+            y12[1] = y12_grid[out1[0]][out2[0]]; y12[2] = y12_grid[out1[1]][out2[0]];
+            y12[3] = y12_grid[out1[1]][out2[1]]; y12[4] = y12_grid[out1[0]][out2[1]];
+            bcuint(y, y1, y2, y12, lo_2d[out1[0]], lo_2d[out1[1]],
+                   la_2d[out2[0]], la_2d[out2[1]],
+                   lo*180.0/M_PI, la*180.0/M_PI, &ansy, &ansy1, &ansy2);
         }
 
         if(brightness_model == 12){
-            point_T = *ansy;
+            point_T = ansy;
             point_b = bb_interp(point_T, bb_g);
         }
         if(brightness_model == 13){
-            point_b = *ansy;
+            point_b = ansy;
         }
-
-        free(out1);
-        free(out2);
-
-        free(y);
-        free(y1);
-        free(y2);
-        free(y12);
-
-        free(ansy);
-        free(ansy1);
-        free(ansy2);
-
         }
     else{
         printf("BRIGHTNESS MODEL NOT RECOGNISED\n");
     }
 
 //        printf("%f %f %f\n",ars, star_bright,insol);
-    output = malloc(sizeof(double) * 2); // dynamic `array (size 2) of pointers to double`
-
-    output[0] = point_b;
-    output[1] = point_T;
-
-    return output;
-
+    out[0] = point_b;
+    out[1] = point_T;
 }
 
 double **generate_planet(int n_layers){

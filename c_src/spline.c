@@ -4952,6 +4952,27 @@ double *penta ( int n, double a1[], double a2[], double a3[], double a4[],
 }
 /******************************************************************************/
 
+/* SPEED PATCH: evaluate the cubic spline on a caller-supplied interval index.
+   Identical arithmetic to spline_cubic_val(), just without the interval search. */
+double spline_cubic_val_ival ( int ival, double t[], double y[], double ypp[],
+  double tval, double *ypval, double *yppval )
+{
+  double dt = tval - t[ival];
+  double h = t[ival+1] - t[ival];
+
+  *ypval = ( y[ival+1] - y[ival] ) / h
+    - ( ypp[ival+1] / 6.0 + ypp[ival] / 3.0 ) * h
+    + dt * ( ypp[ival] + dt * ( 0.5 * ( ypp[ival+1] - ypp[ival] ) / h ) );
+  *yppval = ypp[ival] + dt * ( ypp[ival+1] - ypp[ival] ) / h;
+
+  return y[ival]
+    + dt * ( ( y[ival+1] - y[ival] ) / h
+           - ( ypp[ival+1] / 6.0 + ypp[ival] / 3.0 ) * h
+    + dt * ( 0.5 * ypp[ival]
+    + dt * ( ( ypp[ival+1] - ypp[ival] ) / ( 6.0 * h ) ) ) );
+}
+/******************************************************************************/
+
 double spline_cubic_val ( int n, double t[], double y[], double ypp[], 
   double tval, double *ypval, double *yppval )
 
@@ -5023,15 +5044,20 @@ double spline_cubic_val ( int n, double t[], double y[], double ypp[],
   Determine the interval [ T(I), T(I+1) ] that contains TVAL.
   Values below T[0] or above T[N-1] use extrapolation.
 */
-  ival = n - 2;
-
-  for ( i = 0; i < n-1; i++ )
+/*
+  SPEED PATCH: t[] is ascending for every caller in spiderman (blackbody
+  temperature grid, stellar Teff grid), so the original O(n) forward scan can be
+  replaced by an O(log n) bisection.  Identical interval, identical result.
+*/
   {
-    if ( tval < t[i+1] )
+    int klo = 0, khi = n - 1, kmid;
+    while ( khi - klo > 1 )
     {
-      ival = i;
-      break;
+      kmid = ( klo + khi ) / 2;
+      if ( tval < t[kmid] ) khi = kmid; else klo = kmid;
     }
+    ival = klo;
+    if ( tval >= t[n-1] ) ival = n - 2;
   }
 /*
   In the interval I, the polynomial is in terms of a normalized

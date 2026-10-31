@@ -4,3 +4,7 @@ void bcuint(float y[], float y1[], float y2[], float y12[], float x1l,
 	float *ansy1, float *ansy2);
 void bcucof(float y[], float y1[], float y2[], float y12[], float d1, float d2,
 	float **c);
+float *bcu_coef_table(double *x, double *y, double **ff, double **y1_grid,
+                      double **y2_grid, double **y12_grid, int n1, int n2);
+float bcuint_fast(const float *c16, double x1l, double x1u, double x2l, double x2u,
+                  double x1, double x2);

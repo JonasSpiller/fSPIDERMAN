@@ -1,4 +1,5 @@
 #include "util.h"
+#define WINDOW_PAD 2   /* >= longest run of duplicate grid values from format_grid */
 # include <stdio.h>
 # include <time.h>
 # include "math.h"
@@ -14,69 +15,70 @@ int factorial(int n) {
 }
 
 int find_minimum(double *a, double v, int n) {
-  int c, index;
+  /* SPEED PATCH: `a` is ascending (see find_top_two), so bisect instead of scanning. */
+  int c, index, lo, hi, mid, w0, w1;
   double min;
 
-  min = pow((a[0] - v),2);
-  index = 0;
- 
-  for (c = 1; c < n; c++) {
-    if ( pow((a[c] - v),2) < min) {
-       index = c;
-       min = pow((a[c] - v),2);
-    }
+  lo = 0; hi = n - 1;
+  while (hi - lo > 1) { mid = (lo + hi) / 2; if (a[mid] <= v) lo = mid; else hi = mid; }
+  w0 = lo - WINDOW_PAD; if (w0 < 0) w0 = 0;
+  w1 = lo + WINDOW_PAD; if (w1 > n - 1) w1 = n - 1;
+
+  min = (a[w0] - v) * (a[w0] - v);
+  index = w0;
+  for (c = w0 + 1; c <= w1; c++) {
+    if (((a[c] - v) * (a[c] - v)) < min) { index = c; min = (a[c] - v) * (a[c] - v); }
   }
- 
   return index;
 }
 
 void find_top_two(double *a, double v, int n, int *out) {
-  int c, index1,index2,c_start;
+  /* SPEED PATCH: `a` is always an ascending, non-decreasing grid (spiderman.read_model
+     .format_grid builds it with np.unique + wrap padding, so duplicates are adjacent).
+     The original implementation was two full O(n) scans; this brackets `v` with a
+     binary search and then reproduces the original argmin logic on a small window
+     around the bracket.  Result is identical, cost is O(log n) instead of O(n). */
+  int c, index1, index2, c_start, lo, hi, mid, w0, w1;
   double min;
 
-  min = pow((a[0] - v),2);
-  index1 = 0;
-  index2 = 0;
- 
-  c_start = 0;
-  for (c = c_start; c < n; c++) {
-    if ( pow((a[c] - v),2) < min) {
-       index1 = c;
-       min = pow((a[c] - v),2);
-    }
+  /* binary search: largest lo with a[lo] <= v  (clamped to [0, n-1]) */
+  lo = 0; hi = n - 1;
+  while (hi - lo > 1) {
+    mid = (lo + hi) / 2;
+    if (a[mid] <= v) lo = mid; else hi = mid;
+  }
+  /* window wide enough to contain any run of duplicates introduced by format_grid */
+  w0 = lo - WINDOW_PAD; if (w0 < 0) w0 = 0;
+  w1 = lo + WINDOW_PAD; if (w1 > n - 1) w1 = n - 1;
+
+  min = (a[w0] - v) * (a[w0] - v);
+  index1 = w0;
+  index2 = w0;
+
+  for (c = w0; c <= w1; c++) {
+    if (((a[c] - v) * (a[c] - v)) < min) { index1 = c; min = (a[c] - v) * (a[c] - v); }
   }
 
-  if (index1 == 0) {
-    min = pow((a[1] - v),2);
-    c_start = 2;
-    index2 =1;
+  if (index1 == w0) {
+    min = (a[w0 + 1] - v) * (a[w0 + 1] - v);
+    c_start = w0 + 2;
+    index2 = w0 + 1;
   }
-  else{
-    min = pow((a[0] - v),2);
-    c_start = 1;
+  else {
+    min = (a[w0] - v) * (a[w0] - v);
+    c_start = w0 + 1;
   }
 
-  for (c = c_start; c < n; c++) {
-    if ( pow((a[c] - v),2) < min) {
-      if(c != index1){
-        if(a[c] != a[index1]){
-         index2 = c;
-         min = pow((a[c] - v),2);
-        }
+  for (c = c_start; c <= w1; c++) {
+    if (((a[c] - v) * (a[c] - v)) < min) {
+      if (c != index1) {
+        if (a[c] != a[index1]) { index2 = c; min = (a[c] - v) * (a[c] - v); }
       }
     }
   }
 
-  if (index1 > index2){
-    out[0] = index2;
-    out[1] = index1;
-  }
-  else {
-    out[0] = index1;
-    out[1] = index2;
-  }
-
-
+  if (index1 > index2) { out[0] = index2; out[1] = index1; }
+  else                 { out[0] = index1; out[1] = index2; }
 }
 
 int compare_function(const void *a,const void *b) {
