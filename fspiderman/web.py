@@ -4,6 +4,14 @@ import numpy as np
 import copy 
 
 def get_filter(response):
+	"""Read a response file (two columns: wavelength [m], throughput [electrons per incident photon], the SVO / Pandeia
+	convention) and return [wavelengths, response per unit ENERGY].
+
+	bb_flux() in c_src/blackbody.c and stellar_grid.sum_flux() weight the energy spectral radiance B_lambda with this
+	response, but a photon-counting detector records photons: counts ~ int R(lambda) B_lambda lambda/(hc) dlambda. One
+	photon carries hc/lambda of energy, so the per-photon response is turned into a per-energy one by multiplying with
+	lambda/hc. Upstream divided by lambda instead (hc*R/lambda), i.e. the factor was inverted, which tilts every band by
+	lambda^2 (several per cent on the planet-to-star flux ratio of a wide band like MIRI/LRS)."""
 	filter_wvls = []
 	filter_responses = []
 	hc = 1.98644582e-25
@@ -11,9 +19,7 @@ def get_filter(response):
 		l = line.strip('\n').split(' ')
 		wvl = float(l[0])
 		filter_wvls += [wvl]
-		# dividing by the factor of wvl makes the response proportional 
-		# to units of energy density instead of photon number
-		filter_responses += [hc*float(l[1]) / wvl]
+		filter_responses += [float(l[1]) * wvl / hc]
 	filter_wvls = np.array(filter_wvls)
 	filter_responses = np.array(filter_responses)
 	filter = [filter_wvls,filter_responses]

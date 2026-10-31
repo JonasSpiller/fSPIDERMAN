@@ -146,3 +146,43 @@ which converges only as ~`n_layers`^-1.5 because the brightness has infinite rad
 +0.16 / +0.06 / +0.02 / +0.007 ppm on a 240 ppm depth for 40 / 80 / 160 / 320 layers, independent of
 the temperature-map resolution. This is left as is; use `n_layers ≥ 80` where absolute depths matter.
 
+### 6. Photon-counting response weighting (`fix filter photon weighting`)
+
+With a response file, SPIDERMAN weights the energy spectral radiance $B_\lambda$ of planet (`bb_flux`,
+`c_src/blackbody.c`) and star (`stellar_grid.sum_flux`) with the tabulated response. The files that
+`get_filter` reads follow the SVO / Pandeia convention, electrons per incident photon, so a photon-counting
+detector's signal is $\int R(\lambda)\,B_\lambda\,\lambda/(hc)\,d\lambda$: one photon carries $hc/\lambda$,
+hence the per-photon response becomes a per-energy one by **multiplying** with $\lambda/hc$. Upstream's
+`get_filter` **divided** by $\lambda$ instead (`hc*R/wvl`, commented as "energy density instead of photon
+number"), tilting every band by $\lambda^2$. The fix is the one line `R * wvl / hc`; the planet and the
+star are weighted the same way, so the dimensionless constant drops out of $F_p/F_s$.
+
+The tilt is not small for wide bands. Change of $F_p/F_s$ (fix vs upstream) for a blackbody planet around
+a 4100 K star, with the JWST throughputs used in HyperPhase:
+
+| band | 900 K planet | 1500 K planet |
+|---|---|---|
+| MIRI/LRS 5-10.5 | +10.7 % | +4.6 % |
+| NIRSpec NRS2 | +3.2 % | +1.4 % |
+| NIRSpec NRS1 | +3.1 % | +1.4 % |
+| MIRI/F1500W | +0.3 % | +0.2 % |
+
+Until this fix, HyperPhase worked around the inversion by storing its response files pre-multiplied with
+$\lambda^2$ (so that $hc\,R\lambda^2/\lambda \propto R\lambda$), which gave the correct weighting but files
+that were not throughputs. With the fix the files are plain throughputs again and the pipeline's results
+are unchanged (verified to rounding level). `filter = False` (top-hat) is untouched and still integrates
+energy, as documented upstream.
+
+## Known issues and usage notes
+
+- **`p.eclipse_depth()` segfaults with `brightness_model="direct_T"`** (heap corruption in the C
+  extension, unpatched). Measure the occultation depth from the light curve instead: out-of-occultation
+  flux minus in-occultation flux.
+- **`direct_T` grid orientation.** Build the map with `format_grid(LO, LA, T.T)` from `indexing='ij'`
+  meshgrids in degrees and the temperature array transposed to longitude-first. A wrong orientation does
+  not raise, it silently produces a rotated planet.
+- **Sorted grids.** The longitude/latitude vectors must be ascending (see patch 2).
+- **Hard process exits.** "PLANET IS INSIDE STAR" (a/R★ ≲ 1 + R_p/R★) and, on unpatched builds,
+  "CANNOT DO NEGATIVE TEMPERATURES" are `exit(0)` calls in the C code, not Python exceptions: a bad
+  proposal in a fitting loop kills the worker process. Reject such geometries in the prior.
+
