@@ -79,6 +79,14 @@ Net effect: **`lightcurve()` runs ~4–5× faster** (measured 4.56× for a `dire
 output is bit-identical and the speed-up reaches ~6×, since the bicubic evaluation is skipped
 entirely.
 
+A leave-one-out ablation attributes most of the gain to the binary search, then the per-cell bicubic
+coefficients, the heap churn and the spline search. The speed-up grows with `n_layers` (3.0× at 16,
+3.7× at 30, 4.0× at 60 layers for `direct_T`; 1.5× for the analytic Louden model). Two things to know:
+the longitude/latitude grids must be **sorted ascending**, which `format_grid` guarantees (`np.unique`)
+but a hand-built `grid` must respect, or the bisection returns the wrong cell; and the patches add no
+globals, so process-parallel use (joblib/loky) is safe. Promoting `bcucof`/`bcuint` to `double` would
+remove the 0.04 ppm float reordering at no measurable cost, if ever needed.
+
 ### 3. Memory-leak fix (`apply memoryleak patch`)
 
 `c_src/_web.c › web_lightcurve`, the C entry point behind `p.lightcurve()`, allocates a
@@ -94,7 +102,10 @@ counterpart of `PyArray_AsCArray` (`PyArray_Free` on the converted grid, `Py_DEC
 
 The edits run only after the light curve is computed, so the output is **bit-for-bit identical**;
 `leaks` drops to 0 blocks. This does not cure the tens-of-MB RSS growth seen in very long sweeps,
-which is allocator-arena behaviour rather than a leak and occurs with or without this patch.
+which is allocator-arena behaviour rather than a leak and occurs with or without this patch. Left
+alone: `web_generate_planet` (the plotting path, never inside a fit loop) still leaks its small grids,
+and the build prints `PyArray_AsCArray` deprecation warnings, harmless today but a future numpy may
+drop that API.
 
 ### 4. Bicubic clamp (`apply bicubic clamp patch`)
 
