@@ -431,7 +431,7 @@ static PyObject *web_generate_planet(PyObject *self, PyObject *args)
         bcugrid(lo_2d, la_2d, T_2d, y1_grid, y2_grid, y12_grid, (int) brightness_params[0],(int) brightness_params[1]);
     }
 
-    map_model(planet_struct,n_layers,lambda0,phi0,p_u1,p_u2,bright_type,brightness_params,bb_g,star_surface_bright,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid);
+    map_model(planet_struct,n_layers,lambda0,phi0,p_u1,p_u2,bright_type,brightness_params,bb_g,star_surface_bright,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid,NULL);  /* SPEED PATCH: NULL = original per-sample bcucof path; this entry point maps the planet once, so there is nothing to amortise */
 
     int li;
     if(bright_type == 12 || bright_type == 13){

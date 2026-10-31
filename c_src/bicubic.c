@@ -1,6 +1,66 @@
 #define NRANSI
 #include "nrutil.h"
 #include "bicubic.h"
+#include <stdlib.h>
+
+/* SPEED PATCH -------------------------------------------------------------
+   bcucof() was called once per (segment x time-step) even though its result
+   depends only on which grid CELL the sample falls in.  bcu_coef_table()
+   evaluates it once per cell up front; bcuint_fast() then just evaluates the
+   bicubic polynomial.  Also removes the matrix()/free_matrix() heap traffic.
+   -------------------------------------------------------------------------*/
+
+float *bcu_coef_table(double *x, double *y, double **ff, double **y1_grid,
+                      double **y2_grid, double **y12_grid, int n1, int n2){
+    /* cell (i,j) spans x[i]..x[i+1], y[j]..y[j+1]; 16 coefficients each */
+    float *tab = malloc(sizeof(float) * (size_t)(n1 - 1) * (size_t)(n2 - 1) * 16);
+    float y_[5], y1_[5], y2_[5], y12_[5];
+    float cbuf[5][5];
+    float *crow[5];
+    int i, j, a, b;
+    for (a = 0; a < 5; ++a) crow[a] = cbuf[a];
+    for (i = 0; i < n1 - 1; ++i) {
+        for (j = 0; j < n2 - 1; ++j) {
+            double d1 = x[i+1] - x[i];
+            double d2 = y[j+1] - y[j];
+            float *c16 = tab + ((size_t)i * (n2 - 1) + j) * 16;
+            if (d1 == 0.0 || d2 == 0.0) {          /* degenerate cell (duplicate
+                                                      grid value from format_grid) */
+                for (a = 0; a < 16; ++a) c16[a] = 0.0f;
+                c16[0] = (float) ff[i][j];
+                continue;
+            }
+            y_[1]   = ff[i][j];        y_[2]   = ff[i+1][j];
+            y_[3]   = ff[i+1][j+1];    y_[4]   = ff[i][j+1];
+            y1_[1]  = y1_grid[i][j];   y1_[2]  = y1_grid[i+1][j];
+            y1_[3]  = y1_grid[i+1][j+1]; y1_[4] = y1_grid[i][j+1];
+            y2_[1]  = y2_grid[i][j];   y2_[2]  = y2_grid[i+1][j];
+            y2_[3]  = y2_grid[i+1][j+1]; y2_[4] = y2_grid[i][j+1];
+            y12_[1] = y12_grid[i][j];  y12_[2] = y12_grid[i+1][j];
+            y12_[3] = y12_grid[i+1][j+1]; y12_[4] = y12_grid[i][j+1];
+            bcucof(y_, y1_, y2_, y12_, (float)d1, (float)d2, crow);
+            for (a = 1; a <= 4; ++a)
+                for (b = 1; b <= 4; ++b) c16[(a-1)*4 + (b-1)] = crow[a][b];
+        }
+    }
+    return tab;
+}
+
+float bcuint_fast(const float *c16, double x1l, double x1u, double x2l, double x2u,
+                  double x1, double x2){
+    float t, u, ansy = 0.0f;
+    int i;
+    double d1 = x1u - x1l, d2 = x2u - x2l;
+    if (d1 == 0.0 || d2 == 0.0) return c16[0];
+    t = (float)((x1 - x1l) / d1);
+    u = (float)((x2 - x2l) / d2);
+    for (i = 3; i >= 0; i--) {
+        const float *r = c16 + i*4;
+        ansy = t*ansy + ((r[3]*u + r[2])*u + r[1])*u + r[0];
+    }
+    return ansy;
+}
+
 
 void bcugrid(double *x, double *y, double **ff, double **y1_grid, double **y2_grid, double **y12_grid, int n1, int n2){
 /* a function to build all the derivative grids that bcunit needs when using a 2d grid*/

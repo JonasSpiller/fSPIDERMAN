@@ -57,3 +57,24 @@ build (upstream needs `--no-build-isolation`, because `setup.py` imports numpy f
 without declaring it). `numpy>=2` guarantees the extension is compiled against numpy-2 headers,
 the ABI it is run with. The install itself is the usual
 `pip install git+https://github.com/JonasSpiller/fSPIDERMAN.git` or `pip install .` from a clone.
+
+### 2. Speed patch (`apply speed patch`)
+
+`lightcurve()` is the runtime bottleneck of any fit or MCMC built on SPIDERMAN, above all for
+the `direct_T` model, which interpolates a user-supplied temperature map for every planet segment
+at every time step. Four C-level changes, none touching the physics, remove redundant work in
+those inner loops:
+
+1. binary-search the ascending brightness grid instead of two O(*n*) linear scans (`util.c`);
+2. precompute the 16 bicubic coefficients **once per grid cell** instead of once per
+   (segment × time-step), and drop the per-call heap churn (`bicubic.c`, `web.c`, `generate.c`);
+3. reentrant mapping routines that write into stack buffers instead of `malloc`/`free`
+   (`generate.c`, `orthographic.c`);
+4. direct interval index for the uniform blackbody spline grid, no search (`blackbody.c`, `spline.c`).
+
+Net effect: **`lightcurve()` runs ~4–5× faster** (measured 4.56× for a `direct_T`, `N_LAYERS = 60`,
+`len(t) = 1000` curve on Apple Silicon), with output **bit-for-bit identical** to upstream except a
+≤ 0.04 ppm float-rounding difference on the bicubic path at sharp terminators, about 25× below the
+`N_LAYERS` truncation error there and negligible against JWST noise. With `nearest = True` the
+output is bit-identical and the speed-up reaches ~6×, since the bicubic evaluation is skipped
+entirely.

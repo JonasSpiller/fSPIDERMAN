@@ -6,6 +6,7 @@
 #include "spline.h"
 #include "web.h"
 #include "bicubic.h"
+#include "generate.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -25,6 +26,7 @@ double *lightcurve(int n_layers, int n_points, double *t, double tc, double per,
     double **y1_grid;
     double **y2_grid;
     double **y12_grid;
+    const float *bcu_tab = NULL;   /* SPEED PATCH: per-cell bicubic coefficients */
 
 
 
@@ -91,6 +93,7 @@ double *lightcurve(int n_layers, int n_points, double *t, double tc, double per,
           y12_grid[i] = malloc(sizeof(double) * (int) brightness_params[4]);
         }
         bcugrid(lo_2d, la_2d, T_2d, y1_grid, y2_grid, y12_grid, (int) brightness_params[3],(int) brightness_params[4]);
+        bcu_tab = bcu_coef_table(lo_2d, la_2d, T_2d, y1_grid, y2_grid, y12_grid, (int) brightness_params[3],(int) brightness_params[4]);
     }
 
     if(brightness_model == 13){
@@ -108,6 +111,7 @@ double *lightcurve(int n_layers, int n_points, double *t, double tc, double per,
           y12_grid[i] = malloc(sizeof(double) * (int) brightness_params[1]);
         }
         bcugrid(lo_2d, la_2d, T_2d, y1_grid, y2_grid, y12_grid, (int) brightness_params[0],(int) brightness_params[1]);
+        bcu_tab = bcu_coef_table(lo_2d, la_2d, T_2d, y1_grid, y2_grid, y12_grid, (int) brightness_params[0],(int) brightness_params[1]);
     }
 
 
@@ -146,7 +150,7 @@ double *lightcurve(int n_layers, int n_points, double *t, double tc, double per,
 
 //        printf("bb_g 3 %f\n",bb_g[0][1]);
 
-        map_model(planet,n_layers,lambda0,phi0,u1,u2,brightness_model,brightness_params,bb_g,star_surface_bright,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid);
+        map_model(planet,n_layers,lambda0,phi0,u1,u2,brightness_model,brightness_params,bb_g,star_surface_bright,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid,bcu_tab);
 
         p_bright = 0.0;
         for (j = 0; j < pow(n_layers,2); j++) {
@@ -166,6 +170,8 @@ double *lightcurve(int n_layers, int n_points, double *t, double tc, double per,
         free(coords);
 
     }
+
+    if(bcu_tab != NULL) free((void *) bcu_tab);
 
     int n_segments = pow(n_layers,2);
     for (int i = 0; i < n_segments; ++i) {

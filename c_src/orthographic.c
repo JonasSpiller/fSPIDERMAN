@@ -30,6 +30,23 @@ double *ortho_to_cart(double R, double lambda, double phi, double lambda0, doubl
     return coords;
 }
 
+/* SPEED PATCH: reentrant variant writing into a caller-supplied buffer, so the
+   inner (segment x time-step) loop does not malloc/free 3.6M times per call. */
+void cart_to_ortho_r(double R, double x, double y, double lambda0, double phi0, double *coords){
+	double lambda,phi,rho,c;
+
+	rho = sqrt(pow(x,2) + pow(y,2));
+	c = asin(rho/R);
+	lambda = lambda0 + atan2(x*sin(c),(rho*cos(c)*cos(phi0) - y*sin(c)*sin(phi0) ) );
+	lambda = lambda - M_PI*2*floor(lambda/(M_PI*2));
+	if(lambda>M_PI){ lambda = lambda-2*M_PI; }
+	if(lambda<-M_PI){ lambda = lambda+2*M_PI; }
+	if(y == 0){ phi = asin(cos(c)*sin(phi0)); }
+	else{ phi = asin(cos(c)*sin(phi0) + y*sin(c)*cos(phi0)/rho); }
+	coords[0] = lambda;
+	coords[1] = phi;
+}
+
 double *cart_to_ortho(double R, double x, double y, double lambda0, double phi0){
 	double lambda,phi,rho,c;
 
