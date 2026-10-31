@@ -29,3 +29,24 @@ with an unmodified `spiderman` in the same environment.
 ## Patches
 
 Base: upstream commit `379a5b6` (Aug 2020).
+
+### 1. Version fixes (`apply version patch`)
+
+Stock `spiderman-package` 1.0.3 predates modern scientific Python. The PyPI wheel's precompiled
+C extension is **ABI-incompatible with numpy ≥ 2** (any non-constant `direct_T` brightness grid
+yields garbage temperatures or segfaults inside the bicubic-spline routines), and building the
+Aug-2020 source from scratch fails on a current stack for several independent reasons.
+
+Six small changes, none touching the physics, make it **build and run on a modern stack**
+(tested on Python 3.11 / numpy 2.4.6 / matplotlib 3.10 / setuptools 82):
+
+- `setup.py`: `license` must be a string, not a list (modern setuptools calls `.split()` on it);
+- `setup.py`: drop the unused `import numpy.distutils.misc_util` (`numpy.distutils` was removed in numpy 2.0 and breaks setuptools ≥ 72);
+- `c_src/_web.c`, `c_src/_heron.c`: `NPY_IN_ARRAY → NPY_ARRAY_IN_ARRAY` (39×; the old flag alias is gone from the numpy 2.x headers);
+- `fspiderman/plot.py`: `matplotlib._png.read_png → matplotlib.image.imread` (private module removed in matplotlib 3.3);
+- `fspiderman/read_model.py`: `np.array([LO, LA, T]) → np.array([LO, LA, T], dtype=object)` (ragged arrays need an explicit object dtype since numpy 1.24);
+- `fspiderman/stellar_grid.py`: de-list the boolean mask `[(…)] → (…)` (indexing with a list containing a boolean array is an error in modern numpy).
+
+Verified after the rebuild: a constant-temperature `direct_T` grid is bit-for-bit identical to the
+`two temperature` model with equal day/night temperatures, and repeated `lightcurve()` calls
+return identical results.

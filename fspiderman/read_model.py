@@ -68,6 +68,6 @@ def format_grid(longitude,latitude,temp):
 		T = np.vstack((T[:,1],T[:,0],T.T,T[:,-1],T[:,-2])).T
 		LA = np.hstack((-180 - LA[0:2][::-1],LA,180-LA[-2:][::-1]))
 
-	grid = np.array([LO,LA,T])
+	grid = np.array([LO,LA,T], dtype=object)
 
 	return grid

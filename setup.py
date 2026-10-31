@@ -1,6 +1,5 @@
 import setuptools
 from distutils.core import setup, Extension
-import numpy.distutils.misc_util
 import numpy as np
 
 _web = Extension("fspiderman._web",["c_src/_web.c","c_src/heron.c","c_src/segment.c","c_src/areas.c","c_src/intersection.c","c_src/generate.c","c_src/blocked.c","c_src/util.c","c_src/pyutil.c","c_src/web.c","c_src/orthographic.c","c_src/ephemeris.c","c_src/blackbody.c","c_src/spline.c","c_src/brightness_maps.c","c_src/legendre_polynomial.c","c_src/bicubic.c","c_src/nrutil.c"
@@ -13,7 +12,7 @@ setup(	name='fspiderman-package',
 	url = 'https://github.com/tomlouden/fspiderman',
 	download_url = 'https://github.com/tomlouden/fspiderman/tarball/1.0.2',
 	packages =['fspiderman'],
-	license = ['GNU GPLv3'],
+	license = 'GNU GPLv3',
 	description ='Fast secondary eclipse and phase curve modeling',
 	classifiers = [
 		'Development Status :: 4 - Beta',
