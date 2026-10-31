@@ -78,3 +78,20 @@ Net effect: **`lightcurve()` runs ~4–5× faster** (measured 4.56× for a `dire
 `N_LAYERS` truncation error there and negligible against JWST noise. With `nearest = True` the
 output is bit-identical and the speed-up reaches ~6×, since the bicubic evaluation is skipped
 entirely.
+
+### 3. Memory-leak fix (`apply memoryleak patch`)
+
+`c_src/_web.c › web_lightcurve`, the C entry point behind `p.lightcurve()`, allocates a
+2 × `n_wvls` `wvl_grid` on every call, frees the two rows but never the outer pointer array: a
+small per-call leak (~32 B/call; macOS `leaks` reports 80 leaked blocks after 80 `direct_T` calls).
+The `direct_T` grid clean-up also carried latent undefined behaviour: `free(T_2d[0])` released
+numpy-owned data, and `Py_DECREF` was applied to raw `double*` data pointers and to borrowed
+argument objects.
+
+The fix adds the missing `free(wvl_grid)` and replaces the grid clean-up with the numpy-correct
+counterpart of `PyArray_AsCArray` (`PyArray_Free` on the converted grid, `Py_DECREF` on the two
+`PyArray_FROM_OTF` references, which are hoisted to function scope for that purpose).
+
+The edits run only after the light curve is computed, so the output is **bit-for-bit identical**;
+`leaks` drops to 0 blocks. This does not cure the tens-of-MB RSS growth seen in very long sweeps,
+which is allocator-arena behaviour rather than a leak and occurs with or without this patch.

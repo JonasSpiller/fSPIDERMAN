@@ -602,6 +602,7 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
     PyObject *t_obj,*bright_obj,*teff_obj,*flux_obj, *response_obj, *wvl_obj;
     PyObject *lo_2d_obj,*la_2d_obj,*T_2d_obj;
     double **T_2d, *lo_2d, *la_2d;
+    PyObject *lo_2d_array = NULL, *la_2d_array = NULL;   /* MEMORY-LEAK PATCH: released in cleanup */
     npy_intp* dims[4];
     
     /* Parse the input tuple */
@@ -618,14 +619,14 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
 
         PyArray_AsCArray((PyObject **) &T_2d_obj, (void **) &T_2d, dims, 2, descr);
 
-        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+        lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (lo_2d_array == NULL) {
             Py_XDECREF(lo_2d_array);
             return NULL;
         }
         lo_2d    = (double*)PyArray_DATA(lo_2d_array);
 
-        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+        la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (la_2d_array == NULL) {
             Py_XDECREF(la_2d_array);
             return NULL;
@@ -697,12 +698,9 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
 
     if(bright_type == 12 || bright_type == 13){
 
-        free(T_2d[0]);
-        free(T_2d);
-        Py_DECREF(lo_2d);
-        Py_DECREF(la_2d);
-        Py_DECREF(lo_2d_obj);
-        Py_DECREF(la_2d_obj);
+        PyArray_Free(T_2d_obj, (void *)T_2d);  /* MEMORY-LEAK PATCH: frees the AsCArray pointer array AND releases the converted grid (was leaked) */
+        Py_DECREF(lo_2d_array);                /* MEMORY-LEAK PATCH: release the PyArray_FROM_OTF references (was leaked) */
+        Py_DECREF(la_2d_array);
 
     }
 
@@ -719,6 +717,7 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
     for (int i = 0; i < 2; ++i) {
         free(wvl_grid[i]);
     }
+    free(wvl_grid);   /* MEMORY-LEAK PATCH: free the outer pointer array too */
 
     return pylist;
 }
