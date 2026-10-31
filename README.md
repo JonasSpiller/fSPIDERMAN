@@ -95,3 +95,28 @@ counterpart of `PyArray_AsCArray` (`PyArray_Free` on the converted grid, `Py_DEC
 The edits run only after the light curve is computed, so the output is **bit-for-bit identical**;
 `leaks` drops to 0 blocks. This does not cure the tens-of-MB RSS growth seen in very long sweeps,
 which is allocator-arena behaviour rather than a leak and occurs with or without this patch.
+
+### 4. Bicubic clamp (`apply bicubic clamp patch`)
+
+The `direct_T` model evaluates the temperature map with a bicubic interpolant (`bcuint` /
+`bcuint_fast` in `c_src/generate.c`, gradients from finite differences). A bicubic is not
+monotone: at a sharp step in the map it overshoots on both sides. For a map with a 0 K nightside
+next to a ~1000–3000 K terminator the undershoot reaches tens of kelvin below the nightside value
+(46 K for a TOI-2431 b naive-insolation map, 103 K at a/R★ = 1.5, T★ = 6000 K, A_B = 0), and
+`bb_interp()` in `c_src/blackbody.c` then hits `if (tval < 0) exit(0)` — the infamous
+"CANNOT DO NEGATIVE TEMPERATURES!", a hard process kill rather than a Python exception. The usual
+workaround, flooring the map at 100–200 K, is not free at long wavelengths: a 200 K floor adds
+~1.8 ppm of spurious nightside flux at 18 µm for a TOI-2431 b-like planet.
+
+The fix clamps the interpolated value to the range of the cell's four corner values, right after
+the bicubic evaluation. It is exact at the nodes, removes the overshoot in both directions, leaves
+`nearest = True` untouched (that path bypasses the bicubic), and affects a smooth map only where
+it has an extremum strictly inside a cell, at the 10⁻³ ppm level.
+
+Verified against the unclamped build: constant maps, `nearest = True` and the analytic Louden
+model are bit-identical; smooth hyper-illumination curves change by ≤ 0.001 ppm and naive curves
+at the same floor by ≤ 0.013 ppm; a step-map test whose exact answer is known (half the disc at
+quadrature) becomes 2–15× **more** accurate; maps with a 0 K nightside now run and give exactly
+zero nightside flux edge-on; a representative albedo fit shifts by 5 × 10⁻⁵; no measurable
+slowdown. **This is the one patch that deliberately changes results** (removing an interpolation
+artefact), so curves from a clamped build are not bit-identical to upstream at sharp terminators.

@@ -264,6 +264,22 @@ void call_map_model_r(double la,double lo,double lambda0, double phi0,int bright
                    lo*180.0/M_PI, la*180.0/M_PI, &ansy, &ansy1, &ansy2);
         }
 
+        float corner[5];
+        corner[1] = T_2d[out1[0]][out2[0]]; corner[2] = T_2d[out1[1]][out2[0]];
+        corner[3] = T_2d[out1[1]][out2[1]]; corner[4] = T_2d[out1[0]][out2[1]];
+
+        /* CLAMP PATCH: a bicubic interpolant is not monotone. At a sharp step in the map (the terminator of a
+           T = 0 nightside) it overshoots both ways: above the dayside value, and below the nightside value to
+           NEGATIVE temperatures, on which bb_interp() exit()s the whole process ("CANNOT DO NEGATIVE TEMPERATURES").
+           Limit the interpolated value to the range of the cell's four corner values: exact at the nodes, no
+           overshoot in either direction, and a smooth map is affected only where it has an extremum inside a cell. */
+        {
+            float c_min = corner[1], c_max = corner[1];
+            for (int k = 2; k <= 4; ++k) { if (corner[k] < c_min) c_min = corner[k]; if (corner[k] > c_max) c_max = corner[k]; }
+            if (ansy < c_min) ansy = c_min;
+            if (ansy > c_max) ansy = c_max;
+        }
+
         if(brightness_model == 12){
             point_T = ansy;
             point_b = bb_interp(point_T, bb_g);
