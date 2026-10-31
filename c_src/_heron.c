@@ -126,10 +126,10 @@ static PyObject *heron_find_quad_area(PyObject *self, PyObject *args)
         return NULL;
 
     /* Interpret the input objects as numpy arrays. */
-    PyObject *a_array = PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *b_array = PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *c_array = PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *d_array = PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *a_array = PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *b_array = PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *c_array = PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *d_array = PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
 
     /* If that didn't work, throw an exception. */
     if (a_array == NULL || b_array == NULL || c_array == NULL || d_array == NULL) {
@@ -165,10 +165,10 @@ static PyObject *heron_one_in_one_out(PyObject *self, PyObject *args)
         return NULL;
 
     /* Interpret the input objects as numpy arrays. */
-    PyObject *c1_array = PyArray_FROM_OTF(c1_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *c2_array = PyArray_FROM_OTF(c2_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *e1_array = PyArray_FROM_OTF(e1_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *e2_array = PyArray_FROM_OTF(e2_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *c1_array = PyArray_FROM_OTF(c1_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *c2_array = PyArray_FROM_OTF(c2_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *e1_array = PyArray_FROM_OTF(e1_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *e2_array = PyArray_FROM_OTF(e2_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
 
     /* If that didn't work, throw an exception. */
     if (c1_array == NULL || c2_array == NULL || e1_array == NULL || e2_array == NULL) {

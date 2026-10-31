@@ -172,10 +172,10 @@ static PyObject *web_find_quad_area(PyObject *self, PyObject *args)
         return NULL;
 
     /* Interpret the input objects as numpy arrays. */
-    PyObject *a_array = PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *b_array = PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *c_array = PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *d_array = PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *a_array = PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *b_array = PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *c_array = PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *d_array = PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
 
     /* If that didn't work, throw an exception. */
     if (a_array == NULL || b_array == NULL || c_array == NULL || d_array == NULL) {
@@ -211,10 +211,10 @@ static PyObject *web_one_in_one_out(PyObject *self, PyObject *args)
         return NULL;
 
     /* Interpret the input objects as numpy arrays. */
-    PyObject *c1_array = PyArray_FROM_OTF(c1_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *c2_array = PyArray_FROM_OTF(c2_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *e1_array = PyArray_FROM_OTF(e1_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *e2_array = PyArray_FROM_OTF(e2_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *c1_array = PyArray_FROM_OTF(c1_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *c2_array = PyArray_FROM_OTF(c2_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *e1_array = PyArray_FROM_OTF(e1_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *e2_array = PyArray_FROM_OTF(e2_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
 
     /* If that didn't work, throw an exception. */
     if (c1_array == NULL || c2_array == NULL || e1_array == NULL || e2_array == NULL) {
@@ -300,14 +300,14 @@ static PyObject *web_generate_planet(PyObject *self, PyObject *args)
 
         PyArray_AsCArray((PyObject **) &T_2d_obj, (void **) &T_2d, dims, 2, descr);
 
-        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (lo_2d_array == NULL) {
             Py_XDECREF(lo_2d_array);
             return NULL;
         }
         lo_2d    = (double*)PyArray_DATA(lo_2d_array);
 
-        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (la_2d_array == NULL) {
             Py_XDECREF(la_2d_array);
             return NULL;
@@ -317,8 +317,8 @@ static PyObject *web_generate_planet(PyObject *self, PyObject *args)
 
     double **planet_struct = generate_planet(n_layers);
 
-    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-//    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_OBJECT, NPY_IN_ARRAY);
+    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+//    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_OBJECT, NPY_ARRAY_IN_ARRAY);
     if (bright_array == NULL) {
         Py_XDECREF(bright_array);
         return NULL;
@@ -326,14 +326,14 @@ static PyObject *web_generate_planet(PyObject *self, PyObject *args)
     /* Get pointers to the data as C-types. */
     double *brightness_params    = (double*)PyArray_DATA(bright_array);
 
-    PyObject *teff_array = PyArray_FROM_OTF(teff_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *teff_array = PyArray_FROM_OTF(teff_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (teff_array == NULL) {
         Py_XDECREF(teff_array);
         return NULL;
     }
     double *stellar_teffs    = (double*)PyArray_DATA(teff_array);
 
-    PyObject *flux_array = PyArray_FROM_OTF(flux_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *flux_array = PyArray_FROM_OTF(flux_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (flux_array == NULL) {
         Py_XDECREF(flux_array);
         return NULL;
@@ -486,8 +486,8 @@ static PyObject *web_blocked(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "iOOd", &n_layers,&x_obj,&y_obj,&r2))
         return NULL;
 
-    PyObject *x_array = PyArray_FROM_OTF(x_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *y_array = PyArray_FROM_OTF(y_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *x_array = PyArray_FROM_OTF(x_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyObject *y_array = PyArray_FROM_OTF(y_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
 
     /* If that didn't work, throw an exception. */
     if (x_array == NULL || y_array == NULL) {
@@ -574,7 +574,7 @@ static PyObject *web_calc_substellar(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "dO", &phase,&c_obj))
         return NULL;
 
-    PyObject *c_array = PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *c_array = PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
 
     /* If that didn't work, throw an exception. */
     if (c_array == NULL) {
@@ -618,14 +618,14 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
 
         PyArray_AsCArray((PyObject **) &T_2d_obj, (void **) &T_2d, dims, 2, descr);
 
-        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (lo_2d_array == NULL) {
             Py_XDECREF(lo_2d_array);
             return NULL;
         }
         lo_2d    = (double*)PyArray_DATA(lo_2d_array);
 
-        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (la_2d_array == NULL) {
             Py_XDECREF(la_2d_array);
             return NULL;
@@ -633,14 +633,14 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
         la_2d    = (double*)PyArray_DATA(la_2d_array);
     }
 
-    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (bright_array == NULL) {
         Py_XDECREF(bright_array);
         return NULL;
     }
     double *brightness_params    = (double*)PyArray_DATA(bright_array);
 
-    PyObject *t_array = PyArray_FROM_OTF(t_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *t_array = PyArray_FROM_OTF(t_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (t_array == NULL) {
         Py_XDECREF(t_array);
         return NULL;
@@ -651,28 +651,28 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
     /* Get pointers to the data as C-types. */
     double *t2    = (double*)PyArray_DATA(t_array);
 
-    PyObject *teff_array = PyArray_FROM_OTF(teff_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *teff_array = PyArray_FROM_OTF(teff_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (teff_array == NULL) {
         Py_XDECREF(teff_array);
         return NULL;
     }
     double *star_teff    = (double*)PyArray_DATA(teff_array);
 
-    PyObject *flux_array = PyArray_FROM_OTF(flux_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *flux_array = PyArray_FROM_OTF(flux_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (flux_array == NULL) {
         Py_XDECREF(flux_array);
         return NULL;
     }
     double *star_flux    = (double*)PyArray_DATA(flux_array);
 
-    PyObject *wvl_array = PyArray_FROM_OTF(wvl_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *wvl_array = PyArray_FROM_OTF(wvl_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (wvl_array == NULL) {
         Py_XDECREF(wvl_array);
         return NULL;
     }
     double *wvls    = (double*)PyArray_DATA(wvl_array);
 
-    PyObject *response_array = PyArray_FROM_OTF(response_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+    PyObject *response_array = PyArray_FROM_OTF(response_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (response_array == NULL) {
         Py_XDECREF(response_array);
         return NULL;
@@ -776,8 +776,8 @@ static PyObject *web_call_map_model(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "ddiOOOO", &la,&lo,&bright_type,&bright_obj,&lo_2d_obj,&la_2d_obj,&T_2d_obj))
         return NULL;
 
-    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-//    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_OBJECT, NPY_IN_ARRAY);
+    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+//    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_OBJECT, NPY_ARRAY_IN_ARRAY);
     if (bright_array == NULL) {
         Py_XDECREF(bright_array);
         return NULL;
@@ -792,14 +792,14 @@ static PyObject *web_call_map_model(PyObject *self, PyObject *args)
 
         PyArray_AsCArray((PyObject **) &T_2d_obj, (void **) &T_2d, dims, 2, descr);
 
-        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (lo_2d_array == NULL) {
             Py_XDECREF(lo_2d_array);
             return NULL;
         }
         lo_2d    = (double*)PyArray_DATA(lo_2d_array);
 
-        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (la_2d_array == NULL) {
             Py_XDECREF(la_2d_array);
             return NULL;
@@ -839,14 +839,14 @@ static PyObject *web_call_map_model(PyObject *self, PyObject *args)
 
         PyArray_AsCArray((PyObject **) &T_2d_obj, (void **) &T_2d, dims, 2, descr);
 
-        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *lo_2d_array = PyArray_FROM_OTF(lo_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (lo_2d_array == NULL) {
             Py_XDECREF(lo_2d_array);
             return NULL;
         }
         lo_2d    = (double*)PyArray_DATA(lo_2d_array);
 
-        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_IN_ARRAY);
+        PyObject *la_2d_array = PyArray_FROM_OTF(la_2d_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
         if (la_2d_array == NULL) {
             Py_XDECREF(la_2d_array);
             return NULL;
