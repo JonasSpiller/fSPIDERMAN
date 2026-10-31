@@ -15,3 +15,4 @@ out
 .pypirc
 dist/*
 dist
+*.egg-info/

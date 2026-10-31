@@ -50,3 +50,10 @@ Six small changes, none touching the physics, make it **build and run on a moder
 Verified after the rebuild: a constant-temperature `direct_T` grid is bit-for-bit identical to the
 `two temperature` model with equal day/night temperatures, and repeated `lightcurve()` calls
 return identical results.
+
+The same commit series also adds a `pyproject.toml` declaring the build requirements
+(`setuptools`, `wheel`, `numpy>=2`), so a plain `pip install .` works with pip's default isolated
+build (upstream needs `--no-build-isolation`, because `setup.py` imports numpy for its C headers
+without declaring it). `numpy>=2` guarantees the extension is compiled against numpy-2 headers,
+the ABI it is run with. The install itself is the usual
+`pip install git+https://github.com/JonasSpiller/fSPIDERMAN.git` or `pip install .` from a clone.

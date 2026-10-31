@@ -1,5 +1,4 @@
-import setuptools
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 import numpy as np
 
 _web = Extension("fspiderman._web",["c_src/_web.c","c_src/heron.c","c_src/segment.c","c_src/areas.c","c_src/intersection.c","c_src/generate.c","c_src/blocked.c","c_src/util.c","c_src/pyutil.c","c_src/web.c","c_src/orthographic.c","c_src/ephemeris.c","c_src/blackbody.c","c_src/spline.c","c_src/brightness_maps.c","c_src/legendre_polynomial.c","c_src/bicubic.c","c_src/nrutil.c"
@@ -22,7 +21,6 @@ setup(	name='fspiderman-package',
 		],
 	include_dirs = [np.get_include()],
 	install_requires = ['numpy'],
-	setup_requires=['wheel'],
 	ext_modules=[_web],
 	package_data = {'fspiderman': ['art/*','test_data/*']},
 )
