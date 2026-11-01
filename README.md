@@ -24,7 +24,9 @@ reproduces the upstream light curves bit for bit, except where a fix changes a r
 which is then stated.
 
 The package is renamed to **`fspiderman`** (`import fspiderman as sp`, same API) so it can coexist
-with an unmodified `spiderman` in the same environment.
+with an unmodified `spiderman` in the same environment. The *f* originally stood for fast, then the
+compatibility and bug fixes came along, so it now stands for fast, fixed, and fork, in whichever
+order you need.
 
 ## Patches
 
