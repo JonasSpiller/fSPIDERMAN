@@ -12,7 +12,6 @@ except:
 import matplotlib.pyplot as plt
 import numpy as np
 import fspiderman
-from scipy.interpolate import interp1d
 
 def gen_grid(l1,l2,logg=4.5, response = False, stellar_model = "blackbody", verbose=False):
         #options for stellar models are "blackbody", "PHOENIX", and "path_to_model"
@@ -89,7 +88,18 @@ def sum_flux(wvl, flux, l1, l2, filter=False):
     w = np.concatenate(([l1], wvl[inside], [l2]))
     f = np.concatenate(([np.interp(l1, wvl, flux)], flux[inside], [np.interp(l2, wvl, flux)]))
     if filter is not False:
-        r = interp1d(filter[0], filter[1], kind='linear', bounds_error=True, axis=0)(w)
+        fw, fr = np.asarray(filter[0], float), np.asarray(filter[1], float)
+        o = np.argsort(fw)
+        fw, fr = fw[o], fr[o]
+        # Guard: a band edge outside the tabulated response is a real error -- except for round-off. A response file
+        # written with ~11 significant digits can sit ~1e-11 (relative) inside the in-memory edge it was built from, and
+        # since the band edges are evaluated exactly (above), that alone used to raise. Edges within the tolerance are
+        # evaluated with the response held at its first/last tabulated value (np.interp does this).
+        tol = 1e-9 * fw[-1]
+        if l1 < fw[0] - tol or l2 > fw[-1] + tol:
+            raise ValueError(f"band [{l1:.10e}, {l2:.10e}] m extends beyond the filter response "
+                             f"[{fw[0]:.10e}, {fw[-1]:.10e}] m")
+        r = np.interp(w, fw, fr)
     else:
         r = np.ones_like(w)
     trapezoid = getattr(np, "trapezoid", None) or np.trapz
