@@ -142,8 +142,7 @@ class ModelParams(object):
 			self.thermal= False			# Is this a thermal distribution?
 
 		else:
-			print('Brightness model "'+str(brightness_model)+'" not recognised!')
-			quit()
+			raise ValueError('Brightness model "'+str(brightness_model)+'" not recognised!')
 
 	def format_bright_params(self):
 		if (self.brightness_type == 0):
@@ -151,17 +150,13 @@ class ModelParams(object):
 			try:
 				brightness_params = [self.pb]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 		elif (self.brightness_type == 1):
 			brightness_param_names = ['T_s','l1','l2','T_p']
 			try:
 				brightness_params = [self.T_s,self.l1,self.l2,self.T_p]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 		elif (self.brightness_type == 2):
 			brightness_param_names = ['pb_d','pb_n']
 #			try:
@@ -171,9 +166,7 @@ class ModelParams(object):
 			try:
 				brightness_params = [0, 0, self.pb_n, self.grid_size,self.pb_d, 90]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 		elif (self.brightness_type == 3):
 			brightness_param_names = ['T_s','l1','l2','T_p_d','T_p_n']
 #			try:
@@ -182,17 +175,13 @@ class ModelParams(object):
 			try:
 				brightness_params = [self.T_s,self.l1, self.l2, self.grid_size, 0, 0, self.T_p_n, self.T_p_d, 90]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 		elif (self.brightness_type == 4):
 			brightness_param_names = ['T_s','l1','l2','xi','T_n','delta_T']
 			try:
 				brightness_params = [self.T_s,self.l1,self.l2,self.xi,self.T_n,self.delta_T]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 
 		elif (self.brightness_type == 5 or self.brightness_type == 14):
 
@@ -210,15 +199,11 @@ class ModelParams(object):
 				if self.brightness_type == 14:
 					brightness_params = [self.T_s,self.l1,self.l2] + brightness_params
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 #			total_modes = (self.degree * (self.degree +1))/2.0
 			total_modes = (self.degree)**2
 			if len(self.sph) != total_modes:
-				print('You have not specified the correct number of mode coefficients!')
-				print('You gave '+str(int(len(self.sph)))+', there should be '+str(int(total_modes)))
-				quit()
+				raise ValueError('You have not specified the correct number of mode coefficients! You gave '+str(int(len(self.sph)))+', there should be '+str(int(total_modes)))
 
 #                elif (self.brightness_type == 6):
 #                        brightness_param_names = ['T_s','l1','l2','insol','albedo','redist']
@@ -234,27 +219,21 @@ class ModelParams(object):
 			try:
 				brightness_params = [self.T_s, self.l1, self.l2, self.insol, self.albedo, self.redist,self.T_int]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 
 		elif (self.brightness_type == 7):
 			brightness_param_names = ['la0','lo0','p_b','spot_b','size']
 			try:
 				brightness_params = [self.la0, self.lo0, self.p_b, self.grid_size,self.spot_b, self.size]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 
 		elif (self.brightness_type == 8):
 			brightness_param_names = ['T_s','l1','l2','la0','lo0','p_T','spot_T','size']
 			try:
 				brightness_params = [self.T_s,self.l1, self.l2, self.grid_size, self.la0, self.lo0, self.p_T, self.spot_T, self.size]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 
 		elif (self.brightness_type == 9):
 			brightness_param_names = ['albedo']
@@ -269,9 +248,7 @@ class ModelParams(object):
 			try:
 				brightness_params = [self.T_s,self.l1,self.l2,self.albedo,ars,r2]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 		elif (self.brightness_type == 10):
 			brightness_param_names = ['T_s','l1','l2','xi','T_n','delta_T','albedo']
 			ars = 1.0/self.a
@@ -279,18 +256,14 @@ class ModelParams(object):
 			try:
 				brightness_params = [self.T_s,self.l1,self.l2,self.xi,self.T_n,self.delta_T,self.albedo,ars,r2]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 
 		elif (self.brightness_type == 11):
 			brightness_param_names = ['T_s','l1','l2','xi','T_n','delta_T','cloud']
 			try:
 				brightness_params = [self.T_s,self.l1,self.l2,self.xi,self.T_n,self.delta_T,self.clouds]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 		elif (self.brightness_type == 12):
 			brightness_param_names = ['T_s','l1','l2','grid']
 			n_lo = len(self.grid[0])
@@ -307,9 +280,7 @@ class ModelParams(object):
 			try:
 				brightness_params = [self.T_s,self.l1,self.l2,n_lo,n_la,nearest]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 
 		elif (self.brightness_type == 13):
 			brightness_param_names = ['grid']
@@ -327,15 +298,11 @@ class ModelParams(object):
 			try:
 				brightness_params = [n_lo,n_la,nearest]
 			except:
-				print('Brightness parameters incorrectly assigned')
-				print('should be',brightness_param_names)
-				quit()
+				raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 
 
 		elif any(b == None for b in brightness_params):
-			print('Brightness parameters incorrectly assigned')
-			print('should be',brightness_param_names)
-			quit()
+			raise ValueError('Brightness parameters incorrectly assigned, should be '+str(brightness_param_names))
 		return brightness_params
 
 	def plot_square(self,*args,**kwargs):

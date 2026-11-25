@@ -16,7 +16,7 @@ whose thermal forward model drives SPIDERMAN's `direct_T` brightness model with 
 `lightcurve()` routine is the runtime bottleneck of that work. The fork therefore carries
 
 - **compatibility fixes** so it builds and runs on current Python / numpy / matplotlib / setuptools,
-- **bug fixes** in the C extension and in the stellar-flux integration,
+- **bug fixes** in the C extension, its error handling and the stellar-flux integration,
 - **performance patches** to `lightcurve()`, with output unchanged,
 
 each applied as its own commit and documented below. The physics is untouched: a patched build
@@ -85,7 +85,7 @@ A leave-one-out ablation attributes most of the gain to the binary search, then 
 coefficients, the heap churn and the spline search. The speed-up grows with `n_layers` (3.0× at 16,
 3.7× at 30, 4.0× at 60 layers for `direct_T`; 1.5× for the analytic Louden model). Two things to know:
 the longitude/latitude grids must be **sorted ascending**, which `format_grid` guarantees (`np.unique`)
-but a hand-built `grid` must respect, or the bisection returns the wrong cell; and the patches add no
+but a hand-built `grid` must respect, or the bisection returns the wrong cell; and the speed patches add no
 globals, so process-parallel use (joblib/loky) is safe. Promoting `bcucof`/`bcuint` to `double` would
 remove the 0.04 ppm float reordering at no measurable cost, if ever needed.
 
@@ -117,7 +117,8 @@ monotone: at a sharp step in the map it overshoots on both sides. For a map with
 next to a ~1000–3000 K terminator the undershoot reaches tens of kelvin below the nightside value
 (46 K for a TOI-2431 b naive-insolation map, 103 K at a/R★ = 1.5, T★ = 6000 K, A_B = 0), and
 `bb_interp()` in `c_src/blackbody.c` then hits `if (tval < 0) exit(0)` — the infamous
-"CANNOT DO NEGATIVE TEMPERATURES!", a hard process kill rather than a Python exception. The usual
+"CANNOT DO NEGATIVE TEMPERATURES!", a hard process kill rather than a Python exception (a `ValueError` since
+patch 7). The usual
 workaround, flooring the map at 100–200 K, is not free at long wavelengths: a 200 K floor adds
 ~1.8 ppm of spurious nightside flux at 18 µm for a TOI-2431 b-like planet.
 
@@ -186,6 +187,39 @@ that were not throughputs. With the fix the files are plain throughputs again an
 are unchanged (verified to rounding level). `filter = False` (top-hat) is untouched and still integrates
 energy, as documented upstream.
 
+### 7. Errors raise exceptions (`raise exceptions instead of exiting`)
+
+Upstream ends the whole Python process on two invalid inputs: a planet that overlaps its star (`lightcurve()`
+in `c_src/web.c`, "PLANET IS INSIDE STAR", when the star–planet separation falls below R★ + R_p, i.e.
+a/R★ < 1 + R_p/R★ on a circular orbit) and a negative temperature (`bb_interp()` and `bb_flux()` in
+`c_src/blackbody.c`, "CANNOT DO NEGATIVE TEMPERATURES"). Both are `exit(0)` calls, so the process ends with
+status **0**, the status of success: a script stops silently, a joblib worker dies, and a pytest run stops
+mid-suite without a summary, which a CI job reports as passed. The parameter checks of `fspiderman/params.py`
+(an unknown brightness model, a missing brightness parameter, a wrong number of spherical-harmonic
+coefficients) printed a message and called `quit()`, which also ends a script with status 0.
+
+The fix: the C routines record the error in one buffer (`set_spiderman_error` in `c_src/util.c`) and return,
+and `lightcurve()` stops at the time step where it occurred. The four entry points that can reach one
+(`lightcurve`, `generate_planet`, `call_map_model` and `bb_grid` in `c_src/_web.c`) clear the buffer when they
+start and raise its message as a **`ValueError`**, after freeing their memory as on a normal return:
+
+```
+ValueError: improperly specified parameters: the planet is inside the star (separation 1.03 R_s < 1 + R_p/R_s = 1.05)
+ValueError: cannot do negative temperatures: the model requested -50.000000 K
+```
+
+The parameter checks raise `ValueError` too. The buffer is the one global the fork adds, and it is safe in
+parallel use: the extension never releases the GIL, so two calls in one process cannot interleave, and every
+process (joblib/loky worker) has its own. In a loky pool the `ValueError` reaches the parent like any other
+exception.
+
+Valid inputs run exactly as before: bit-for-bit identical output to the previous build for HyperPhase's
+`direct_T` and Louden phase curves (fast and direct evaluation, MIRI/LRS and NIRSpec NRS2), the
+`zhang`, `two temperature`, `spherical`, `lambertian` and `direct_T` (bicubic and nearest) models,
+`generate_planet` and `bb_grid`. Every error path raises, a valid call after an error is bit-identical to one
+in a fresh process, and failing calls grow the memory no more than valid ones (24,000 of each). Left alone:
+the allocation helpers of `c_src/nrutil.c` still `exit(1)` when memory runs out, with a nonzero status.
+
 ## Known issues and usage notes
 
 - **`p.eclipse_depth()` segfaults with `brightness_model="direct_T"`** (heap corruption in the C
@@ -195,7 +229,7 @@ energy, as documented upstream.
   meshgrids in degrees and the temperature array transposed to longitude-first. A wrong orientation does
   not raise, it silently produces a rotated planet.
 - **Sorted grids.** The longitude/latitude vectors must be ascending (see patch 2).
-- **Hard process exits.** "PLANET IS INSIDE STAR" (a/R★ ≲ 1 + R_p/R★) and, on unpatched builds,
-  "CANNOT DO NEGATIVE TEMPERATURES" are `exit(0)` calls in the C code, not Python exceptions: a bad
-  proposal in a fitting loop kills the worker process. Reject such geometries in the prior.
+- **A planet inside its star raises `ValueError`** (a/R★ < 1 + R_p/R★; upstream ends the process, see
+  patch 7). A fit or sampler can catch it and reject the proposal; bounding a/R★ in the prior avoids the
+  call altogether.
 

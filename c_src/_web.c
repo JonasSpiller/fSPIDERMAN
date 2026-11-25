@@ -13,6 +13,7 @@
 #include "blackbody.h"
 #include "brightness_maps.h"
 #include "bicubic.h"
+#include "util.h"
 #include <stdio.h>
 
 #ifndef M_PI
@@ -27,6 +28,17 @@ static char segment_docstring[] =
     "Calculate the area of a circle segment.";
 static char quad_docstring[] =
     "Calculate the area of a circle segment.";
+
+/* ERROR PATCH: the C routines record an error with set_spiderman_error (util.c) instead of calling exit(0).
+   The entry points that can reach one clear the buffer when they start and raise it here as a ValueError;
+   returns 1 if there was an error. */
+static int raise_spiderman_error(void)
+{
+    if (spiderman_error[0] == '\0') return 0;
+    PyErr_SetString(PyExc_ValueError, spiderman_error);
+    spiderman_error[0] = '\0';
+    return 1;
+}
 
 static PyObject *web_heron(PyObject *self, PyObject *args);
 static PyObject *web_segment(PyObject *self, PyObject *args);
@@ -293,6 +305,7 @@ static PyObject *web_generate_planet(PyObject *self, PyObject *args)
     /* Parse the input tuple */
     if (!PyArg_ParseTuple(args, "iddddiOOOidOOO", &n_layers,&lambda0,&phi0,&p_u1,&p_u2,&bright_type,&bright_obj,&teff_obj,&flux_obj,&n_star,&rp,&lo_2d_obj,&la_2d_obj,&T_2d_obj))
         return NULL;
+    spiderman_error[0] = '\0';   /* ERROR PATCH: see raise_spiderman_error */
 
     /* Call the external C function to compute the area. */
 
@@ -467,7 +480,8 @@ static PyObject *web_generate_planet(PyObject *self, PyObject *args)
     n_1 =pow(n_layers,2);
     n_2=18;
 
-    PyObject *pylist = Convert_2d_Array(planet_struct,n_1,n_2);
+    PyObject *pylist = NULL;
+    if (!raise_spiderman_error()) pylist = Convert_2d_Array(planet_struct,n_1,n_2);   /* ERROR PATCH */
 
     /* Clean up. */
     free(planet_struct);
@@ -608,6 +622,7 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
     /* Parse the input tuple */
     if (!PyArg_ParseTuple(args, "iOddddddddddiOOOiiOOiiOOO", &n_layers,&t_obj,&tc,&per,&a,&inc,&ecc,&omega,&a_rs,&rp,&p_u1,&p_u2,&bright_type,&bright_obj,&teff_obj,&flux_obj,&n_star,&eclipse,&wvl_obj,&response_obj,&n_wvls,&use_filter,&lo_2d_obj,&la_2d_obj,&T_2d_obj))
         return NULL;
+    spiderman_error[0] = '\0';   /* ERROR PATCH: see raise_spiderman_error */
 
     int typenum = NPY_DOUBLE;
     PyArray_Descr *descr = PyArray_DescrFromType(typenum);
@@ -694,7 +709,8 @@ static PyObject *web_lightcurve(PyObject *self, PyObject *args)
 
     double *output = lightcurve(n_layers,N,t2,tc,per,a,inc,ecc,omega,a_rs,rp,p_u1,p_u2,bright_type,brightness_params,star_teff,star_flux,n_star, eclipse,use_filter,n_wvls,wvl_grid,lo_2d,la_2d,T_2d);
 
-    PyObject *pylist = Convert_Big_Array(output,N);
+    PyObject *pylist = NULL;
+    if (!raise_spiderman_error()) pylist = Convert_Big_Array(output,N);   /* ERROR PATCH */
 
     if(bright_type == 12 || bright_type == 13){
 
@@ -730,6 +746,7 @@ static PyObject *web_bb_grid(PyObject *self, PyObject *args)
     /* Parse the input tuple */
     if (!PyArg_ParseTuple(args, "ddddii", &l1,&l2,&T_start,&T_end,&n_temps,&n_segments))
         return NULL;
+    spiderman_error[0] = '\0';   /* ERROR PATCH: see raise_spiderman_error */
 
     /* Call the external C function to compute the area. */
     int use_filter = 0;
@@ -748,7 +765,8 @@ static PyObject *web_bb_grid(PyObject *self, PyObject *args)
 
 /*    printf("%f\n",output[0][0]); */
 
-    PyObject *pylist = Convert_2d_Array(output,3,n_temps);
+    PyObject *pylist = NULL;
+    if (!raise_spiderman_error()) pylist = Convert_2d_Array(output,3,n_temps);   /* ERROR PATCH */
 
     free(output);
 
@@ -774,6 +792,7 @@ static PyObject *web_call_map_model(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "ddiOOOO", &la,&lo,&bright_type,&bright_obj,&lo_2d_obj,&la_2d_obj,&T_2d_obj))
         return NULL;
+    spiderman_error[0] = '\0';   /* ERROR PATCH: see raise_spiderman_error */
 
     PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
 //    PyObject *bright_array = PyArray_FROM_OTF(bright_obj, NPY_OBJECT, NPY_ARRAY_IN_ARRAY);
@@ -911,7 +930,8 @@ static PyObject *web_call_map_model(PyObject *self, PyObject *args)
 
     /* Build the output tuple */
 
-    PyObject *ret = Py_BuildValue("[d,d]",vals[0],vals[1]);
+    PyObject *ret = NULL;
+    if (!raise_spiderman_error()) ret = Py_BuildValue("[d,d]",vals[0],vals[1]);   /* ERROR PATCH */
 //    PyObject *ret = Py_BuildValue("[d,d]",0,0);
 
 //    free(vals);

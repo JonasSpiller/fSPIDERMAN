@@ -7,6 +7,7 @@
 #include "web.h"
 #include "bicubic.h"
 #include "generate.h"
+#include "util.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -143,14 +144,20 @@ double *lightcurve(int n_layers, int n_points, double *t, double tc, double per,
         double t_dist = sqrt(pow(coords[0],2) + pow(coords[1],2) + pow(coords[2],2));
 
         if(t_dist < (r2+1)){
-            printf("IMPROPERLY SPECIFIED PARAMETERS, PLANET IS INSIDE STAR! ABORT!\n");
-            exit(0);
-            return output;
+            /* ERROR PATCH: was printf + exit(0); web_lightcurve raises ValueError */
+            set_spiderman_error("improperly specified parameters: the planet is inside the star (separation %g R_s < 1 + R_p/R_s = %g)", t_dist*rp, 1.0 + rp);
+            free(coords);
+            break;
         }
 
 //        printf("bb_g 3 %f\n",bb_g[0][1]);
 
         map_model(planet,n_layers,lambda0,phi0,u1,u2,brightness_model,brightness_params,bb_g,star_surface_bright,lo_2d,la_2d,T_2d,y1_grid,y2_grid,y12_grid,bcu_tab);
+
+        if(spiderman_error[0] != '\0'){   /* ERROR PATCH: a negative temperature in the map, stop here */
+            free(coords);
+            break;
+        }
 
         p_bright = 0.0;
         for (j = 0; j < pow(n_layers,2); j++) {

@@ -7,3 +7,7 @@ int i4_min ( int i1, int i2 );
 void r8vec_print ( int n, double a[], char *title );
 void timestamp ( void );
 int factorial (int n);
+/* ERROR PATCH: C routines record an error here instead of calling exit(0), which ended the Python process
+   with status 0; the entry points in _web.c raise it as a ValueError. */
+extern char spiderman_error[256];
+void set_spiderman_error(const char *format, ...);

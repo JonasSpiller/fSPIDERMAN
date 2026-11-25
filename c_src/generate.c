@@ -270,7 +270,7 @@ void call_map_model_r(double la,double lo,double lambda0, double phi0,int bright
 
         /* CLAMP PATCH: a bicubic interpolant is not monotone. At a sharp step in the map (the terminator of a
            T = 0 nightside) it overshoots both ways: above the dayside value, and below the nightside value to
-           NEGATIVE temperatures, on which bb_interp() exit()s the whole process ("CANNOT DO NEGATIVE TEMPERATURES").
+           NEGATIVE temperatures, on which upstream's bb_interp() exit()s the whole process ("CANNOT DO NEGATIVE TEMPERATURES").
            Limit the interpolated value to the range of the cell's four corner values: exact at the nodes, no
            overshoot in either direction, and a smooth map is affected only where it has an extremum inside a cell. */
         {

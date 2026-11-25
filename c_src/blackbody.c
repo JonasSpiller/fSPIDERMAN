@@ -21,9 +21,9 @@ double bb_interp(double tval, double **bb_g){
 	n_segments = (int) bb_g[3][0];
 
 	if(tval< 0.0){
-		printf("Model requested a temperature of %f K!\n",tval);
-		printf("CANNOT DO NEGATIVE TEMPERATURES!\n");
-		exit(0);
+		/* ERROR PATCH: was printf + exit(0); the caller's entry point raises ValueError */
+		set_spiderman_error("cannot do negative temperatures: the model requested %f K", tval);
+		return 0.0;
 	}	
 
 	/* SPEED PATCH: bb_g[0] is a uniform grid (T_start..T_end in n_temps steps,
@@ -93,9 +93,9 @@ double bb_flux(double l1, double l2, double T,int n_segments, int use_filter, in
 
 
 	if(T< 0.0){
-		printf("Model requested a temperature of %f K!\n",T);
-		printf("CANNOT DO NEGATIVE TEMPERATURES!\n");
-		exit(0);
+		/* ERROR PATCH: was printf + exit(0); the caller's entry point raises ValueError */
+		set_spiderman_error("cannot do negative temperatures: the model requested %f K", T);
+		return 0.0;
 	}	
 
 

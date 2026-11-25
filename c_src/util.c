@@ -3,6 +3,19 @@
 # include <stdio.h>
 # include <time.h>
 # include "math.h"
+# include <stdarg.h>
+
+/* ERROR PATCH: one buffer per process (see util.h). The extension never releases the GIL, so two calls
+   cannot interleave; the first error of a call is kept. */
+char spiderman_error[256] = "";
+
+void set_spiderman_error(const char *format, ...) {
+  va_list args;
+  if (spiderman_error[0] != '\0') return;
+  va_start(args, format);
+  vsnprintf(spiderman_error, sizeof(spiderman_error), format, args);
+  va_end(args);
+}
 
  
 int factorial(int n) {
